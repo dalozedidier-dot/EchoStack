@@ -12,6 +12,8 @@ import yaml
 class ValidationIssue:
     path: str
     message: str
+    validator: str | None = None
+    schema_path: str | None = None
 
 
 def load_yaml(path: Path) -> dict[str, Any]:
@@ -34,9 +36,18 @@ def validate_claim(data: dict[str, Any]) -> list[ValidationIssue]:
     schema = json.loads(_schema_path().read_text(encoding="utf-8"))
     issues: list[ValidationIssue] = []
     validator = jsonschema.Draft202012Validator(schema)
-    for err in sorted(validator.iter_errors(data), key=lambda e: e.path):
+
+    for err in sorted(validator.iter_errors(data), key=lambda e: list(e.path)):
         path = "/" + "/".join(str(p) for p in err.path)
-        issues.append(ValidationIssue(path=path, message=err.message))
+        schema_path = "/" + "/".join(str(p) for p in err.schema_path)
+        issues.append(
+            ValidationIssue(
+                path=path if path != "/" else "/",
+                message=err.message,
+                validator=str(err.validator),
+                schema_path=schema_path,
+            )
+        )
 
     # Semantic normalization requirements: unknown must be explicit "unspecified"
     if isinstance(data.get("domain"), dict):
@@ -47,6 +58,8 @@ def validate_claim(data: dict[str, Any]) -> list[ValidationIssue]:
                     ValidationIssue(
                         path=f"/domain/{k}",
                         message="Must be provided. Use 'unspecified' if unknown.",
+                        validator="semantic",
+                        schema_path="/domain",
                     )
                 )
 

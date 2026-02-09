@@ -65,24 +65,63 @@ def _safe_slug(s: str) -> str:
     return s.strip("_") or "unknown"
 
 
+def _load_claim_or_exit(
+    path: Path, json_mode: bool, out: Path | None, pretty: bool
+) -> Claim | None:
+    try:
+        return Claim.from_yaml(path)
+    except Exception as e:
+        msg = f"Cannot load claim '{path}': {e}"
+        if json_mode:
+            _write_json(
+                {"path": str(path), "status": "error", "error": msg},
+                out=out,
+                pretty=pretty,
+            )
+        else:
+            sys.stderr.write("ERROR: " + msg + "\n")
+        return None
+
+
 def cmd_validate(args: argparse.Namespace) -> int:
-    claim = Claim.from_yaml(Path(args.claim))
+    out_path = Path(args.out) if args.out else None
+    claim_path = Path(args.claim)
+    claim = _load_claim_or_exit(claim_path, args.json, out_path, args.pretty)
+    if claim is None:
+        return 2
+
     issues = claim.validate()
+    status = "pass" if not issues else "fail"
 
     if args.json:
-        _write_json(
-            {
-                "claim_id": claim.claim_id,
-                "status": "pass" if not issues else "fail",
-                "issues": [{"path": i.path, "message": i.message} for i in issues],
-            },
-            out=Path(args.out) if args.out else None,
-            pretty=args.pretty,
-        )
+        payload: dict[str, object] = {
+            "claim_id": claim.claim_id,
+            "path": str(claim_path),
+            "status": status,
+            "issues": [],
+        }
+        for i in issues:
+            item = {"path": i.path, "message": i.message}
+            if args.explain:
+                item["validator"] = getattr(i, "validator", None)
+                item["schema_path"] = getattr(i, "schema_path", None)
+            payload["issues"].append(item)
+        _write_json(payload, out=out_path, pretty=args.pretty)
     else:
         if issues:
             for i in issues:
-                sys.stderr.write(f"{i.path}: {i.message}\n")
+                line = f"{i.path}: {i.message}"
+                if args.explain:
+                    v = getattr(i, "validator", None)
+                    sp = getattr(i, "schema_path", None)
+                    extra = []
+                    if v:
+                        extra.append(f"validator={v}")
+                    if sp:
+                        extra.append(f"schema_path={sp}")
+                    if extra:
+                        line += " [" + ", ".join(extra) + "]"
+                sys.stderr.write(line + "\n")
             return 2
         sys.stdout.write("OK\n")
 
@@ -90,9 +129,17 @@ def cmd_validate(args: argparse.Namespace) -> int:
 
 
 def cmd_audit(args: argparse.Namespace) -> int:
-    claim = Claim.from_yaml(Path(args.claim))
+    out_path = Path(args.out) if args.out else None
+    claim_path = Path(args.claim)
+    claim = _load_claim_or_exit(claim_path, json_mode=False, out=None, pretty=args.pretty)
+    if claim is None:
+        return 2
+
     report = audit_claim(claim)
-    _write_json(report, out=Path(args.out) if args.out else None, pretty=args.pretty)
+    _write_json(report, out=out_path, pretty=args.pretty)
+
+    if args.fail_on_fail and report.get("summary", {}).get("overall") == "fail":
+        return 3
     return 0
 
 
@@ -109,7 +156,19 @@ def cmd_audit_dir(args: argparse.Namespace) -> int:
     index: list[dict[str, object]] = []
 
     for p in claim_paths:
-        claim = Claim.from_yaml(p)
+        claim = _load_claim_or_exit(p, json_mode=False, out=None, pretty=args.pretty)
+        if claim is None:
+            any_failed = True
+            index.append(
+                {
+                    "claim_id": None,
+                    "path": str(p),
+                    "report": None,
+                    "overall": "error",
+                }
+            )
+            continue
+
         report = audit_claim(claim)
         slug = _safe_slug(str(report.get("claim_id", p.stem)))
         out_path = out_dir / f"audit_{slug}.json"
@@ -138,7 +197,8 @@ def cmd_audit_dir(args: argparse.Namespace) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="echostack", description="EchoStack: claim manifest -> E-Strict audit report"
+        prog="echostack",
+        description="EchoStack: claim manifest -> E-Strict audit report (spec quality, not truth)",
     )
     sub = parser.add_subparsers(dest="cmd", required=True)
 
@@ -147,12 +207,23 @@ def build_parser() -> argparse.ArgumentParser:
     p_val.add_argument("--json", action="store_true", help="Emit JSON instead of plain text")
     p_val.add_argument("--out", default=None, help="Write JSON output to file")
     p_val.add_argument("--pretty", action="store_true", help="Pretty JSON output")
+    p_val.add_argument(
+        "--explain",
+        action="store_true",
+        help="Include schema details (validator and schema_path) in output",
+    )
     p_val.set_defaults(func=cmd_validate)
 
     p_aud = sub.add_parser("audit", help="Run E-Strict audit and emit a JSON report")
     p_aud.add_argument("claim", help="Path to claim YAML")
     p_aud.add_argument("--out", default=None, help="Write report JSON to file")
     p_aud.add_argument("--pretty", action="store_true", help="Pretty JSON output")
+    p_aud.add_argument(
+        "--fail-on-fail",
+        dest="fail_on_fail",
+        action="store_true",
+        help="Exit non-zero if the audit overall result is fail",
+    )
     p_aud.set_defaults(func=cmd_audit)
 
     p_dir = sub.add_parser("audit-dir", help="Audit all claim YAML files under dirs/files/globs")
@@ -168,7 +239,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--fail-on-fail",
         dest="fail_on_fail",
         action="store_true",
-        help="Exit non-zero if any report is not overall=pass",
+        help="Exit non-zero if any report is not overall=pass (including load errors)",
     )
     p_dir.set_defaults(func=cmd_audit_dir)
 

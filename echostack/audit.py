@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -19,6 +20,61 @@ def _status(pass_cond: bool, partial_cond: bool) -> str:
     if partial_cond:
         return "partial"
     return "fail"
+
+
+def _is_unspecified(value: object) -> bool:
+    if value is None:
+        return True
+    if isinstance(value, str):
+        s = value.strip()
+        if s == "":
+            return True
+        if s.lower() == "unspecified":
+            return True
+    return False
+
+
+def _looks_like_scale_q(value: object) -> bool:
+    """Return True if the value meaningfully specifies the energy scale Q.
+
+    We accept either a numeric Q or an explicit limiting statement like "Q -> 0+",
+    as long as it is not "unspecified".
+    """
+    if isinstance(value, (int, float)):
+        return True
+
+    s = str(value).strip()
+    if s == "":
+        return False
+
+    s_low = s.lower()
+
+    # Limit/proxy statements are acceptable as explicit scale specifications.
+    if "q" in s_low and ("->" in s_low or "limit" in s_low or "proxy" in s_low):
+        return True
+
+    # Numeric string is also acceptable (permissive: the goal is to avoid "unspecified").
+    try:
+        float(re.sub(r"[^\deE+.\-]", "", s))
+        return True
+    except Exception:
+        return False
+
+
+def _normalize_scheme(scheme: str) -> str:
+    s = scheme.strip().lower()
+    s = s.replace("_", "-")
+    s = re.sub(r"\s+", "", s)
+
+    # Common aliases.
+    if s in {"os", "on-shell", "onshell"}:
+        return "on-shell"
+    if s in {"msbar", "ms-bar", "ms\\bar", "ms"}:
+        return "msbar"
+    if s in {"mom", "momentum-subtraction"}:
+        return "mom"
+
+    return s
 
 
 def audit_claim(claim: Claim) -> dict[str, Any]:
@@ -50,25 +106,51 @@ def audit_claim(claim: Claim) -> dict[str, Any]:
         evidence_paths=["/domain", "/parameters", "/methods"],
     )
 
-    # E2: scale Q declared (not 'unspecified')
-    scale_q = claim.get("domain", "scale_Q", default="unspecified")
-    scale_q_str = str(scale_q).strip() if scale_q is not None else ""
-    e2_pass = scale_q_str.lower() not in ("unspecified", "")
-    e2_partial = scale_q_str != ""
+    # E2: energy scale Q is explicitly specified (strict: 'unspecified' fails)
+    scale_q = claim.get("domain", "scale_Q", default=None)
+    if _is_unspecified(scale_q):
+        e2_pass = False
+        e2_partial = False
+        e2_reasons = ["domain.scale_Q is missing/empty or set to 'unspecified'."]
+    else:
+        e2_pass = _looks_like_scale_q(scale_q)
+        e2_partial = not e2_pass
+        e2_reasons = (
+            []
+            if e2_pass
+            else ["domain.scale_Q is present but does not look like a scale or limit statement."]
+        )
+
     e2 = CriterionResult(
         status=_status(e2_pass, e2_partial),
-        reasons=[] if e2_pass else ["domain.scale_Q is unspecified or empty."],
+        reasons=e2_reasons,
         evidence_paths=["/domain/scale_Q"],
     )
 
-    # E3: renormalization scheme declared (not 'unspecified')
-    scheme = claim.get("domain", "renormalization_scheme", default="unspecified")
-    scheme_str = str(scheme).strip() if scheme is not None else ""
-    e3_pass = scheme_str.lower() not in ("unspecified", "")
-    e3_partial = scheme_str != ""
+    # E3: renormalization scheme explicitly specified (strict: 'unspecified' fails)
+    raw_scheme = claim.get("domain", "renormalization_scheme", default=None)
+    if _is_unspecified(raw_scheme):
+        e3_pass = False
+        e3_partial = False
+        e3_reasons = ["domain.renormalization_scheme is missing/empty or set to 'unspecified'."]
+    else:
+        scheme_str = str(raw_scheme)
+        norm = _normalize_scheme(scheme_str)
+        known = {"on-shell", "msbar", "mom"}
+        e3_pass = norm in known
+        e3_partial = not e3_pass
+        e3_reasons = (
+            []
+            if e3_pass
+            else [
+                "domain.renormalization_scheme is present but not recognized. "
+                "Use e.g. on-shell, MSbar, MOM, or a clear equivalent."
+            ]
+        )
+
     e3 = CriterionResult(
         status=_status(e3_pass, e3_partial),
-        reasons=[] if e3_pass else ["domain.renormalization_scheme is unspecified or empty."],
+        reasons=e3_reasons,
         evidence_paths=["/domain/renormalization_scheme"],
     )
 
@@ -91,6 +173,7 @@ def audit_claim(claim: Claim) -> dict[str, Any]:
         e4_pass = len(cm_str) >= 20
         e4_partial = len(cm_str) > 0
         reasons: list[str] = []
+
         if not claimed_outputs and claimed_closed:
             reasons.append(
                 "Boundary condition is claimed closed but no parameters are marked as claimed_output."
@@ -125,6 +208,7 @@ def audit_claim(claim: Claim) -> dict[str, Any]:
     any_preds = len(preds) > 0
     e5_pass = any_preds and len(independent) > 0
     e5_partial = any_preds
+
     e5_reasons: list[str] = []
     if not any_preds:
         e5_reasons.append("No predictions declared.")
@@ -144,12 +228,26 @@ def audit_claim(claim: Claim) -> dict[str, Any]:
     any_fail = any(r.status == "fail" for r in results)
     overall = "pass" if all_pass else ("fail" if any_fail else "partial")
 
+    blocking_levels = [
+        lvl
+        for lvl, r in zip(("E1", "E2", "E3", "E4", "E5"), results, strict=False)
+        if r.status == "fail"
+    ]
+
     report: dict[str, Any] = {
-        "audit_version": "0.2.2",
+        "audit_version": "0.2.3",
         "claim_id": claim.claim_id,
         "validation": {
             "status": "pass" if validation_ok else "fail",
-            "issues": [{"path": i.path, "message": i.message} for i in issues],
+            "issues": [
+                {
+                    "path": i.path,
+                    "message": i.message,
+                    "validator": getattr(i, "validator", None),
+                    "schema_path": getattr(i, "schema_path", None),
+                }
+                for i in issues
+            ],
         },
         "criteria": {
             "E1": e1.__dict__,
@@ -160,9 +258,10 @@ def audit_claim(claim: Claim) -> dict[str, Any]:
         },
         "summary": {
             "overall": overall,
+            "blocking_levels": blocking_levels,
             "notes": [
                 "EchoStack audits claim specification quality, not truth.",
-                "Statuses: pass|partial|fail. 'partial' often indicates an honest limitation or incomplete specification.",
+                "Statuses: pass|partial|fail. 'partial' indicates incomplete/ambiguous specification.",
             ],
         },
     }

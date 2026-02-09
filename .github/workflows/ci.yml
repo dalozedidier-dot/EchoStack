@@ -59,10 +59,16 @@ jobs:
           q = json.loads(Path('_ci_out/audit_qhigt.json').read_text(encoding='utf-8'))
           d = json.loads(Path('_ci_out/audit_qed.json').read_text(encoding='utf-8'))
 
+          assert q['audit_version'] == '0.2.3'
+          assert d['audit_version'] == '0.2.3'
+
+          # qHIGT is intentionally under-specified; strict E2/E3/E4 must fail.
           assert q['summary']['overall'] == 'fail', q.get('summary')
-          assert q['criteria']['E2']['status'] in ('fail','partial'), q.get('criteria', {}).get('E2')
+          assert q['criteria']['E2']['status'] == 'fail', q.get('criteria', {}).get('E2')
+          assert q['criteria']['E3']['status'] == 'fail', q.get('criteria', {}).get('E3')
           assert q['criteria']['E4']['status'] == 'fail', q.get('criteria', {}).get('E4')
 
+          # QED example should pass across all levels.
           assert d['summary']['overall'] == 'pass', d.get('summary')
           for lvl in ('E1','E2','E3','E4','E5'):
               assert d['criteria'][lvl]['status'] == 'pass', (lvl, d['criteria'][lvl])

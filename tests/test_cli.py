@@ -30,7 +30,16 @@ def test_validate_fails_on_invalid() -> None:
     assert p.returncode != 0
 
 
-def test_audit_qhigt_expected_fail() -> None:
+def test_validate_explain_includes_schema_details() -> None:
+    p = _run(["validate", "echostack/examples/invalid_missing_fields.yml", "--json", "--explain"])
+    assert p.returncode != 0
+    data = json.loads(p.stdout)
+    assert data["status"] == "fail"
+    assert data["issues"]
+    assert "schema_path" in data["issues"][0]
+
+
+def test_audit_qhigt_expected_fail_strict() -> None:
     out = ROOT / "_ci_out" / "audit_qhigt_test.json"
     out.parent.mkdir(parents=True, exist_ok=True)
 
@@ -38,10 +47,11 @@ def test_audit_qhigt_expected_fail() -> None:
     assert p.returncode == 0, p.stderr
 
     data = json.loads(out.read_text(encoding="utf-8"))
-    assert data["audit_version"] == "0.2.2"
-    assert data["summary"]["overall"] in ("fail", "partial")
-    assert data["criteria"]["E2"]["status"] in ("fail", "partial")
-    assert data["criteria"]["E4"]["status"] in ("fail", "partial")
+    assert data["audit_version"] == "0.2.3"
+    assert data["summary"]["overall"] == "fail"
+    assert data["criteria"]["E2"]["status"] == "fail"
+    assert data["criteria"]["E3"]["status"] == "fail"
+    assert data["criteria"]["E4"]["status"] == "fail"
 
 
 def test_audit_qed_expected_pass() -> None:
@@ -52,7 +62,7 @@ def test_audit_qed_expected_pass() -> None:
     assert p.returncode == 0, p.stderr
 
     data = json.loads(out.read_text(encoding="utf-8"))
-    assert data["audit_version"] == "0.2.2"
+    assert data["audit_version"] == "0.2.3"
     assert data["summary"]["overall"] == "pass"
     for lvl in ("E1", "E2", "E3", "E4", "E5"):
         assert data["criteria"][lvl]["status"] == "pass", (lvl, data["criteria"][lvl])
