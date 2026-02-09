@@ -1,0 +1,44 @@
+claim_id: qhigt_alpha_v3_1
+title: "qHIGT Appendix D: alpha derivation"
+author: "The Consciousness Project"
+source: "zenodo:18391428"
+date: "2026-01-19"
+
+assertions:
+  - id: A1
+    statement: "alpha_inverse is derived from first principles."
+  - id: A2
+    statement: "No empirical fitting is used."
+
+domain:
+  theory: "Beyond-SM claim referencing QED context"
+  regime: "IR / low-energy (implied)"
+  scale_Q: "unspecified"
+  renormalization_scheme: "unspecified"
+  conventions: null
+
+parameters:
+  alpha:
+    status: "claimed_output"
+    scale_dependent: "unspecified"
+    boundary_condition: "claimed_closed"
+    notes: "Claim targets alpha at low energy, but scale/scheme not declared."
+
+methods:
+  approach:
+    - "Fibonacci cascade"
+    - "golden ratio correction"
+  closure_mechanism: null
+  calibration: "Claims no fitting; uses fixed discrete choices (levels/exponents)."
+
+predictions:
+  - id: P1
+    target: "alpha_inverse"
+    value: 137.03595
+    is_independent: false
+    test_protocol: "Specify alpha definition (scheme, Q). Compare to CODATA within stated uncertainty."
+  - id: P2
+    target: "visible_matter_fraction"
+    value: 0.0481
+    is_independent: false
+    test_protocol: "Compare to cosmological parameter estimates; clarify model dependence."

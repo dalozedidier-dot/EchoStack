@@ -1,0 +1,7 @@
+
+# CI / local artifacts
+_ci_out/
+.pytest_cache/
+**/__pycache__/
+*.egg-info/
+.venv/

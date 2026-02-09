@@ -1,0 +1,43 @@
+claim_id: standard_model_alpha_running
+title: "Standard Model: alpha is an input in the IR and runs with Q"
+author: null
+source: "internal:example"
+date: null
+
+assertions:
+  - id: A1
+    statement: "alpha(0) is measured as an IR input parameter."
+  - id: A2
+    statement: "alpha(Q) can be computed conditionally via renormalization group running."
+
+domain:
+  theory: "QED / Standard Model EFT"
+  regime: "IR to electroweak"
+  scale_Q: "Q = mZ (example)"
+  renormalization_scheme: "MSbar (example)"
+  conventions: "natural units c=1, ħ=1"
+
+parameters:
+  alpha0:
+    status: "input"
+    scale_dependent: false
+    boundary_condition: "input"
+    notes: "alpha(0) as boundary condition."
+  alphaQ:
+    status: "derived"
+    scale_dependent: true
+    boundary_condition: "not_applicable"
+    notes: "alpha(Q) computed given alpha(0), scheme, and thresholds."
+
+methods:
+  approach:
+    - "renormalization group running"
+  closure_mechanism: null
+  calibration: "None beyond measuring alpha(0) as input."
+
+predictions:
+  - id: P1
+    target: "alpha_at_mZ"
+    value: "approx 1/127.95"
+    is_independent: true
+    test_protocol: "Given alpha(0) input and SM thresholds, compute alpha(Q) at Q=mZ in MSbar, compare to precision electroweak fits."

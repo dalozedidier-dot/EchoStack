@@ -1,0 +1,37 @@
+# EchoStack Claim Manifest (human template)
+# This file is a template. The formal validator uses: echostack/schemas/claim_schema.json
+
+claim_id: example_claim
+author: null
+source: "zenodo:123456"
+date: "2026-02-07"
+
+assertions:
+  - id: A1
+    statement: "alpha(0) is derived from first principles."
+
+domain:
+  theory: "QED / beyond-SM"
+  regime: "IR / low-energy"
+  scale_Q: "unspecified"
+  renormalization_scheme: "unspecified"
+  conventions: null
+
+parameters:
+  alpha:
+    status: "claimed_output"
+    scale_dependent: "unspecified"
+    boundary_condition: "claimed_closed"
+    notes: null
+
+methods:
+  approach: ["geometric_construction"]
+  closure_mechanism: null
+  calibration: null
+
+predictions:
+  - id: P1
+    target: "alpha_inverse"
+    value: 137.03595
+    is_independent: false
+    test_protocol: "Define alpha in a renormalization scheme at scale Q, then compare to CODATA."

@@ -1,0 +1,36 @@
+claim_id: adversarial_claim_well_formed
+title: "Adversarial but well-formed claim"
+author: null
+source: "internal:adversarial"
+date: null
+
+assertions:
+  - id: A1
+    statement: "X is derived from first principles."
+
+domain:
+  theory: "unspecified"
+  regime: "unspecified"
+  scale_Q: "unspecified"
+  renormalization_scheme: "unspecified"
+  conventions: null
+
+parameters:
+  X:
+    status: "claimed_output"
+    scale_dependent: "unspecified"
+    boundary_condition: "claimed_closed"
+    notes: null
+
+methods:
+  approach:
+    - "handwavy principle"
+  closure_mechanism: ""
+  calibration: null
+
+predictions:
+  - id: P1
+    target: "X"
+    value: "some value"
+    is_independent: false
+    test_protocol: "compare to data"

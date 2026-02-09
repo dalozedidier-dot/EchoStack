@@ -1,0 +1,45 @@
+claim_id: qed_alpha_on_shell_ref_v1
+title: "QED: alpha(0) fixed by on-shell renormalization in the Thomson limit (example)"
+author: null
+source: "internal:example_qed_alpha"
+date: "2026-02-09"
+
+assertions:
+  - id: A1
+    statement: "alpha(0) is defined by the on-shell renormalization condition in the Thomson limit (Q -> 0+)."
+  - id: A2
+    statement: "The claim is fully specified and supplies at least one independent prediction beyond the calibrated target."
+
+domain:
+  theory: "QED"
+  regime: "IR / Thomson limit"
+  scale_Q: "Q -> 0+ (Thomson limit proxy)"
+  renormalization_scheme: "on-shell"
+  conventions: "natural units c=1, ħ=1"
+
+parameters:
+  alpha0:
+    status: "claimed_output"
+    scale_dependent: false
+    boundary_condition: "claimed_closed"
+    notes: "alpha(0) fixed by on-shell renormalization (Thomson limit)."
+
+methods:
+  approach:
+    - "on-shell renormalization"
+    - "Ward identity (gauge invariance)"
+  closure_mechanism: "Charge renormalization is fixed by on-shell conditions in the Thomson limit; Ward identities close the boundary condition without adding fit parameters."
+  calibration: "No in-claim calibration; definition is by renormalization condition."
+
+predictions:
+  - id: P1
+    target: "alpha_inverse_0"
+    value: "137.035999084 (reference value for example)"
+    is_independent: false
+    test_protocol: "Compute or read alpha(0) as defined; compare reported alpha^{-1}(0) to a chosen reference for sanity-check (example only)."
+
+  - id: P2
+    target: "running_alpha_at_mZ"
+    value: "~127.95 (illustrative)"
+    is_independent: true
+    test_protocol: "Given alpha(0) and thresholds, run alpha(Q) to Q=mZ in a fixed scheme and compare to precision electroweak determinations."

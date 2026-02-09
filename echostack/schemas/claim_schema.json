@@ -1,0 +1,232 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "abstract": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "assertions": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "statement": {
+            "minLength": 3,
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "statement"
+        ],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "author": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "claim_id": {
+      "minLength": 3,
+      "type": "string"
+    },
+    "date": {
+      "description": "ISO date YYYY-MM-DD",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "domain": {
+      "additionalProperties": false,
+      "properties": {
+        "conventions": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "regime": {
+          "minLength": 1,
+          "type": "string"
+        },
+        "renormalization_scheme": {
+          "description": "Scheme, or 'unspecified'",
+          "minLength": 1,
+          "type": "string"
+        },
+        "scale_Q": {
+          "description": "Explicit scale, or 'unspecified'",
+          "minLength": 1,
+          "type": "string"
+        },
+        "theory": {
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "theory",
+        "regime",
+        "scale_Q",
+        "renormalization_scheme"
+      ],
+      "type": "object"
+    },
+    "methods": {
+      "additionalProperties": false,
+      "properties": {
+        "approach": {
+          "items": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array"
+        },
+        "calibration": {
+          "description": "Any empirical fitting or calibration statement.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "closure_mechanism": {
+          "description": "How boundary condition is closed, if claimed.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "approach"
+      ],
+      "type": "object"
+    },
+    "parameters": {
+      "additionalProperties": {
+        "additionalProperties": false,
+        "properties": {
+          "boundary_condition": {
+            "enum": [
+              "input",
+              "claimed_closed",
+              "not_applicable",
+              "unspecified"
+            ],
+            "type": "string"
+          },
+          "notes": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "scale_dependent": {
+            "enum": [
+              true,
+              false,
+              "unspecified"
+            ],
+            "type": [
+              "boolean",
+              "string"
+            ]
+          },
+          "status": {
+            "enum": [
+              "input",
+              "output",
+              "claimed_output",
+              "effective",
+              "derived",
+              "unspecified"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "scale_dependent",
+          "boundary_condition"
+        ],
+        "type": "object"
+      },
+      "minProperties": 1,
+      "type": "object"
+    },
+    "predictions": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "is_independent": {
+            "description": "Not calibrated on the predicted quantity",
+            "type": "boolean"
+          },
+          "target": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "test_protocol": {
+            "minLength": 5,
+            "type": "string"
+          },
+          "value": {
+            "description": "Numeric, string, or structured value",
+            "type": [
+              "number",
+              "string",
+              "object"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "target",
+          "value",
+          "is_independent",
+          "test_protocol"
+        ],
+        "type": "object"
+      },
+      "minItems": 1,
+      "type": "array"
+    },
+    "source": {
+      "minLength": 3,
+      "type": "string"
+    },
+    "title": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "claim_id",
+    "source",
+    "assertions",
+    "domain",
+    "parameters",
+    "methods",
+    "predictions"
+  ],
+  "title": "EchoStack Claim Manifest",
+  "type": "object"
+}

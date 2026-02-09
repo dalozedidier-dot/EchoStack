@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "echostack"
+version = "0.2.1"
+description = "EchoStack: rigorously structure and audit theoretical claims (spec quality, not truth)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+authors = [{name = "Didier Daloze"}]
+
+# Runtime deps are explicit to avoid install surprises.
+dependencies = [
+  "PyYAML>=6.0",
+  "jsonschema>=4.22",
+]
+
+[project.optional-dependencies]
+# Dev toolchain (used by CI and contributors)
+dev = [
+  "pytest>=8.0",
+  "ruff>=0.6.0",
+  "black>=24.0",
+]
+
+[project.scripts]
+echostack = "echostack.cli:main"
+
+[tool.setuptools]
+# Use automatic discovery so adding modules doesn't silently break packaging.
+package-dir = {"" = "."}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["echostack*"]
+
+[tool.setuptools.package-data]
+# Ship schemas + examples in wheels/sdists.
+echostack = ["schemas/*.yml", "schemas/*.json", "examples/*.yml"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+select = ["E", "F", "I", "B", "UP"]
+ignore = []
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
