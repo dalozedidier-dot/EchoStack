@@ -107,7 +107,9 @@ def audit_claim(claim: Claim) -> dict[str, Any]:
         # No closure claimed: E4 is not applicable; we treat as partial (honest limitation)
         e4_pass = False
         e4_partial = True
-        reasons = ["No closure claimed; boundary condition remains an explicit input (honest limitation)."]
+        reasons = [
+            "No closure claimed; boundary condition remains an explicit input (honest limitation)."
+        ]
 
     e4 = CriterionResult(
         status=_status(e4_pass, e4_partial),
@@ -127,7 +129,9 @@ def audit_claim(claim: Claim) -> dict[str, Any]:
     if not any_preds:
         e5_reasons.append("No predictions declared.")
     elif len(independent) == 0:
-        e5_reasons.append("No independent predictions declared (all are calibrated or unspecified).")
+        e5_reasons.append(
+            "No independent predictions declared (all are calibrated or unspecified)."
+        )
 
     e5 = CriterionResult(
         status=_status(e5_pass, e5_partial),
