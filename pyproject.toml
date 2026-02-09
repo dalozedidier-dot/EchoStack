@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "echostack"
-version = "0.2.1"
+version = "0.2.2"
 description = "EchoStack: rigorously structure and audit theoretical claims (spec quality, not truth)"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -43,9 +43,12 @@ echostack = ["schemas/*.yml", "schemas/*.json", "examples/*.yml"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+
+[tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]
-ignore = []
+ignore = ["E501"]
 
 [tool.black]
+
 line-length = 100
 target-version = ["py311"]

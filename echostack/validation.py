@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 import jsonschema
 import yaml
@@ -14,7 +14,7 @@ class ValidationIssue:
     message: str
 
 
-def load_yaml(path: Path) -> Dict[str, Any]:
+def load_yaml(path: Path) -> dict[str, Any]:
     with path.open("r", encoding="utf-8") as f:
         data = yaml.safe_load(f)
     if data is None:
@@ -28,10 +28,11 @@ def _schema_path() -> Path:
     return Path(__file__).resolve().parent / "schemas" / "claim_schema.json"
 
 
-def validate_claim(data: Dict[str, Any]) -> List[ValidationIssue]:
+def validate_claim(data: dict[str, Any]) -> list[ValidationIssue]:
     import json
+
     schema = json.loads(_schema_path().read_text(encoding="utf-8"))
-    issues: List[ValidationIssue] = []
+    issues: list[ValidationIssue] = []
     validator = jsonschema.Draft202012Validator(schema)
     for err in sorted(validator.iter_errors(data), key=lambda e: e.path):
         path = "/" + "/".join(str(p) for p in err.path)

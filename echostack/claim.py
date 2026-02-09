@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from .validation import ValidationIssue, load_yaml, validate_claim
 
@@ -11,8 +11,8 @@ from .validation import ValidationIssue, load_yaml, validate_claim
 class Claim:
     """A normalized claim manifest loaded from YAML and validated against the Claim Manifest schema."""
 
-    data: Dict[str, Any]
-    path: Optional[Path] = None
+    data: dict[str, Any]
+    path: Path | None = None
 
     @property
     def claim_id(self) -> str:
@@ -27,9 +27,9 @@ class Claim:
         return cur
 
     @staticmethod
-    def from_yaml(path: Path) -> "Claim":
+    def from_yaml(path: Path) -> Claim:
         data = load_yaml(path)
         return Claim(data=data, path=path)
 
-    def validate(self) -> List[ValidationIssue]:
+    def validate(self) -> list[ValidationIssue]:
         return validate_claim(self.data)
