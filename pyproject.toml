@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "echostack"
-version = "0.2.3"
+version = "0.2.4"
 description = "EchoStack: rigorously structure and audit theoretical claims (spec quality, not truth)"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -23,6 +23,7 @@ dev = [
   "pytest>=8.0",
   "ruff>=0.6.0",
   "black>=24.0",
+  "pre-commit>=3.7",
 ]
 
 [project.scripts]

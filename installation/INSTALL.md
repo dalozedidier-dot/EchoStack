@@ -52,3 +52,35 @@ echostack audit-dir claims/ --out-dir _ci_out --index
 
 - `qhigt_alpha_claim.yml` validates but audits to **overall=fail** (intentionally under-specified).
 - `qed_alpha_claim.yml` validates and audits to **overall=pass** (reference example).
+
+
+## Exit codes (CI-grade)
+
+- `0`: success
+- `1`: invalid input or schema validation failure
+- `2`: audit overall failure (only when using `--fail-on-fail` or `--fail-on-not-pass`)
+
+Examples:
+
+```bash
+echostack audit claim.yml --fail-on-fail
+echo $?
+```
+
+## Makefile shortcuts
+
+```bash
+make install
+make lint
+make format
+make test
+make audit-examples
+make precommit
+```
+
+## Pre-commit
+
+```bash
+pre-commit install
+pre-commit run --all-files
+```

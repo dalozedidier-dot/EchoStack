@@ -9,6 +9,14 @@ from pathlib import Path
 from .audit import audit_claim
 from .claim import Claim
 
+# Exit codes (CI-grade)
+# 0: success
+# 1: invalid input / validation failure (schema or load error)
+# 2: audit overall failure (only when explicitly requested via --fail-on-*)
+EXIT_OK = 0
+EXIT_INVALID = 1
+EXIT_AUDIT_FAIL = 2
+
 
 def _write_json(obj: object, out: Path | None, pretty: bool) -> None:
     payload = json.dumps(obj, indent=2 if pretty else None, sort_keys=True)
@@ -65,33 +73,31 @@ def _safe_slug(s: str) -> str:
     return s.strip("_") or "unknown"
 
 
-def _load_claim_or_exit(
-    path: Path, json_mode: bool, out: Path | None, pretty: bool
-) -> Claim | None:
-    try:
-        return Claim.from_yaml(path)
-    except Exception as e:
-        msg = f"Cannot load claim '{path}': {e}"
-        if json_mode:
-            _write_json(
-                {"path": str(path), "status": "error", "error": msg},
-                out=out,
-                pretty=pretty,
-            )
-        else:
-            sys.stderr.write("ERROR: " + msg + "\n")
-        return None
+def _load_claim(path: Path) -> Claim:
+    return Claim.from_yaml(path)
 
 
 def cmd_validate(args: argparse.Namespace) -> int:
     out_path = Path(args.out) if args.out else None
     claim_path = Path(args.claim)
-    claim = _load_claim_or_exit(claim_path, args.json, out_path, args.pretty)
-    if claim is None:
-        return 2
+
+    try:
+        claim = _load_claim(claim_path)
+    except Exception as e:
+        msg = f"Cannot load claim '{claim_path}': {e}"
+        if args.json:
+            _write_json(
+                {"path": str(claim_path), "status": "error", "error": msg},
+                out=out_path,
+                pretty=args.pretty,
+            )
+        else:
+            sys.stderr.write("ERROR: " + msg + "\n")
+        return EXIT_INVALID
 
     issues = claim.validate()
-    status = "pass" if not issues else "fail"
+    ok = len(issues) == 0
+    status = "pass" if ok else "fail"
 
     if args.json:
         payload: dict[str, object] = {
@@ -103,68 +109,92 @@ def cmd_validate(args: argparse.Namespace) -> int:
         for i in issues:
             item = {"path": i.path, "message": i.message}
             if args.explain:
-                item["validator"] = getattr(i, "validator", None)
-                item["schema_path"] = getattr(i, "schema_path", None)
+                item["validator"] = i.validator
+                item["schema_path"] = i.schema_path
             payload["issues"].append(item)
         _write_json(payload, out=out_path, pretty=args.pretty)
     else:
-        if issues:
+        if not ok:
             for i in issues:
                 line = f"{i.path}: {i.message}"
                 if args.explain:
-                    v = getattr(i, "validator", None)
-                    sp = getattr(i, "schema_path", None)
                     extra = []
-                    if v:
-                        extra.append(f"validator={v}")
-                    if sp:
-                        extra.append(f"schema_path={sp}")
+                    if i.validator:
+                        extra.append(f"validator={i.validator}")
+                    if i.schema_path:
+                        extra.append(f"schema_path={i.schema_path}")
                     if extra:
                         line += " [" + ", ".join(extra) + "]"
                 sys.stderr.write(line + "\n")
-            return 2
-        sys.stdout.write("OK\n")
+        else:
+            sys.stdout.write("OK\n")
 
-    return 0 if not issues else 2
+    return EXIT_OK if ok else EXIT_INVALID
+
+
+def _audit_and_write(
+    claim_path: Path, out_path: Path | None, pretty: bool
+) -> dict[str, object] | None:
+    try:
+        claim = _load_claim(claim_path)
+    except Exception as e:
+        sys.stderr.write(f"ERROR: Cannot load claim '{claim_path}': {e}\n")
+        return None
+
+    report = audit_claim(claim)
+    _write_json(report, out=out_path, pretty=pretty)
+    return report
 
 
 def cmd_audit(args: argparse.Namespace) -> int:
     out_path = Path(args.out) if args.out else None
     claim_path = Path(args.claim)
-    claim = _load_claim_or_exit(claim_path, json_mode=False, out=None, pretty=args.pretty)
-    if claim is None:
-        return 2
 
-    report = audit_claim(claim)
-    _write_json(report, out=out_path, pretty=args.pretty)
+    report = _audit_and_write(claim_path, out_path=out_path, pretty=args.pretty)
+    if report is None:
+        return EXIT_INVALID
 
-    if args.fail_on_fail and report.get("summary", {}).get("overall") == "fail":
-        return 3
-    return 0
+    validation_status = str(report.get("validation", {}).get("status", "fail"))
+    overall = str(report.get("summary", {}).get("overall", "fail"))
+
+    if validation_status != "pass":
+        return EXIT_INVALID
+
+    if args.fail_on_not_pass and overall != "pass":
+        return EXIT_AUDIT_FAIL
+
+    if args.fail_on_fail and overall == "fail":
+        return EXIT_AUDIT_FAIL
+
+    return EXIT_OK
 
 
 def cmd_audit_dir(args: argparse.Namespace) -> int:
     claim_paths = _iter_claim_paths(list(args.inputs))
     if not claim_paths:
         sys.stderr.write("No YAML claim files found.\n")
-        return 2
+        return EXIT_INVALID
 
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    any_failed = False
     index: list[dict[str, object]] = []
+    any_invalid = False
+    any_fail = False
+    any_not_pass = False
 
     for p in claim_paths:
-        claim = _load_claim_or_exit(p, json_mode=False, out=None, pretty=args.pretty)
-        if claim is None:
-            any_failed = True
+        try:
+            claim = _load_claim(p)
+        except Exception as e:
+            any_invalid = True
             index.append(
                 {
                     "claim_id": None,
                     "path": str(p),
                     "report": None,
                     "overall": "error",
+                    "error": str(e),
                 }
             )
             continue
@@ -174,9 +204,16 @@ def cmd_audit_dir(args: argparse.Namespace) -> int:
         out_path = out_dir / f"audit_{slug}.json"
         _write_json(report, out=out_path, pretty=args.pretty)
 
+        validation_status = str(report.get("validation", {}).get("status", "fail"))
         overall = str(report.get("summary", {}).get("overall", "fail"))
+
+        if validation_status != "pass":
+            any_invalid = True
+
+        if overall == "fail":
+            any_fail = True
         if overall != "pass":
-            any_failed = True
+            any_not_pass = True
 
         index.append(
             {
@@ -184,15 +221,26 @@ def cmd_audit_dir(args: argparse.Namespace) -> int:
                 "path": str(p),
                 "report": str(out_path),
                 "overall": overall,
+                "validation": validation_status,
             }
         )
 
     if args.index:
         _write_json({"reports": index}, out=out_dir / "index.json", pretty=True)
 
-    if args.fail_on_fail and any_failed:
-        return 3
-    return 0
+    if args.fail_on_not_pass:
+        if any_invalid:
+            return EXIT_INVALID
+        if any_not_pass:
+            return EXIT_AUDIT_FAIL
+
+    if args.fail_on_fail:
+        if any_invalid:
+            return EXIT_INVALID
+        if any_fail:
+            return EXIT_AUDIT_FAIL
+
+    return EXIT_OK
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -222,7 +270,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--fail-on-fail",
         dest="fail_on_fail",
         action="store_true",
-        help="Exit non-zero if the audit overall result is fail",
+        help="Exit with code 2 if overall=fail (code 1 if schema/load fails)",
+    )
+    p_aud.add_argument(
+        "--fail-on-not-pass",
+        dest="fail_on_not_pass",
+        action="store_true",
+        help="Exit with code 2 if overall!=pass (code 1 if schema/load fails)",
     )
     p_aud.set_defaults(func=cmd_audit)
 
@@ -239,7 +293,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--fail-on-fail",
         dest="fail_on_fail",
         action="store_true",
-        help="Exit non-zero if any report is not overall=pass (including load errors)",
+        help="Exit with code 2 if any report has overall=fail (code 1 if schema/load fails)",
+    )
+    p_dir.add_argument(
+        "--fail-on-not-pass",
+        dest="fail_on_not_pass",
+        action="store_true",
+        help="Exit with code 2 if any report has overall!=pass (code 1 if schema/load fails)",
     )
     p_dir.set_defaults(func=cmd_audit_dir)
 

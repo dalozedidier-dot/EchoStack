@@ -47,7 +47,7 @@ def test_audit_qhigt_expected_fail_strict() -> None:
     assert p.returncode == 0, p.stderr
 
     data = json.loads(out.read_text(encoding="utf-8"))
-    assert data["audit_version"] == "0.2.3"
+    assert data["audit_version"] == "0.2.4"
     assert data["summary"]["overall"] == "fail"
     assert data["criteria"]["E2"]["status"] == "fail"
     assert data["criteria"]["E3"]["status"] == "fail"
@@ -62,7 +62,7 @@ def test_audit_qed_expected_pass() -> None:
     assert p.returncode == 0, p.stderr
 
     data = json.loads(out.read_text(encoding="utf-8"))
-    assert data["audit_version"] == "0.2.3"
+    assert data["audit_version"] == "0.2.4"
     assert data["summary"]["overall"] == "pass"
     for lvl in ("E1", "E2", "E3", "E4", "E5"):
         assert data["criteria"][lvl]["status"] == "pass", (lvl, data["criteria"][lvl])
@@ -83,3 +83,36 @@ def test_audit_dir_writes_reports_and_index() -> None:
     assert "reports" in index
     assert any(r["claim_id"] == "qed_alpha_on_shell_ref_v1" for r in index["reports"])
     assert any(r["claim_id"] == "qhigt_alpha_v3_1" for r in index["reports"])
+
+
+def test_audit_fail_on_fail_exit_codes() -> None:
+    # qhigt is overall fail -> exit code 2 when fail-on-fail
+    p = _run(["audit", "echostack/examples/qhigt_alpha_claim.yml", "--fail-on-fail"])
+    assert p.returncode == 2, p.stderr
+
+    # qed is pass -> exit code 0
+    p2 = _run(["audit", "echostack/examples/qed_alpha_claim.yml", "--fail-on-fail"])
+    assert p2.returncode == 0, p2.stderr
+
+
+def test_audit_invalid_claim_exit_code_1() -> None:
+    p = _run(["audit", "echostack/examples/invalid_missing_fields.yml", "--fail-on-fail"])
+    assert p.returncode == 1
+
+
+def test_audit_dir_fail_on_fail_exit_codes() -> None:
+    out_dir = ROOT / "_ci_out" / "audit_dir_fail_on_fail"
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    p = _run(
+        [
+            "audit-dir",
+            "echostack/examples",
+            "--out-dir",
+            str(out_dir),
+            "--index",
+            "--fail-on-fail",
+        ]
+    )
+    # examples include at least one overall fail, but also include an invalid manifest -> code 1
+    assert p.returncode == 1, p.stderr

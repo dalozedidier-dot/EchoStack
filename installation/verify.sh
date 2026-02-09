@@ -27,3 +27,7 @@ assert q['summary']['overall'] == 'fail', q['summary']
 assert d['summary']['overall'] == 'pass', d['summary']
 print('OK: expected outcomes')
 PY
+
+
+# Audit dir (batch)
+echostack audit-dir echostack/examples --out-dir _ci_out/audit_dir --index

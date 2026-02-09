@@ -32,11 +32,8 @@ jobs:
       - name: Install (dev)
         run: pip install -e ".[dev]"
 
-      - name: Lint (ruff)
-        run: ruff check .
-
-      - name: Format (black)
-        run: black --check .
+      - name: Pre-commit (ruff + black)
+        run: pre-commit run --all-files
 
       - name: CLI smoke
         run: echostack --help
@@ -59,14 +56,14 @@ jobs:
           q = json.loads(Path('_ci_out/audit_qhigt.json').read_text(encoding='utf-8'))
           d = json.loads(Path('_ci_out/audit_qed.json').read_text(encoding='utf-8'))
 
-          assert q['audit_version'] == '0.2.3'
-          assert d['audit_version'] == '0.2.3'
+          assert q['audit_version'] == '0.2.4'
+          assert d['audit_version'] == '0.2.4'
 
           # qHIGT is intentionally under-specified; strict E2/E3/E4 must fail.
           assert q['summary']['overall'] == 'fail', q.get('summary')
-          assert q['criteria']['E2']['status'] == 'fail', q.get('criteria', {}).get('E2')
-          assert q['criteria']['E3']['status'] == 'fail', q.get('criteria', {}).get('E3')
-          assert q['criteria']['E4']['status'] == 'fail', q.get('criteria', {}).get('E4')
+          assert q['criteria']['E2']['status'] == 'fail'
+          assert q['criteria']['E3']['status'] == 'fail'
+          assert q['criteria']['E4']['status'] == 'fail'
 
           # QED example should pass across all levels.
           assert d['summary']['overall'] == 'pass', d.get('summary')

@@ -235,7 +235,7 @@ def audit_claim(claim: Claim) -> dict[str, Any]:
     ]
 
     report: dict[str, Any] = {
-        "audit_version": "0.2.3",
+        "audit_version": "0.2.4",
         "claim_id": claim.claim_id,
         "validation": {
             "status": "pass" if validation_ok else "fail",
