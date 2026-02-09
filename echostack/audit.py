@@ -40,7 +40,7 @@ def _looks_like_scale_q(value: object) -> bool:
     We accept either a numeric Q or an explicit limiting statement like "Q -> 0+",
     as long as it is not "unspecified".
     """
-    if isinstance(value, (int, float)):
+    if isinstance(value, int | float):
         return True
 
     s = str(value).strip()
