@@ -4,6 +4,8 @@ author: "The Consciousness Project"
 source: "zenodo:18391428"
 date: "2026-01-19"
 
+abstract: "Claim that the low-energy (Thomson-limit) fine-structure constant is derived from a Fibonacci/golden-ratio cascade without empirical fitting. This manifest specifies the claim for EchoStack audit (spec quality, not truth)."
+
 assertions:
   - id: A1
     statement: "alpha_inverse is derived from first principles."
@@ -12,33 +14,32 @@ assertions:
 
 domain:
   theory: "Beyond-SM claim referencing QED context"
-  regime: "IR / low-energy (implied)"
-  scale_Q: "unspecified"
-  renormalization_scheme: "unspecified"
-  conventions: null
+  regime: "IR / low-energy"
+  scale_Q: "Q → 0 (Thomson limit)"
+  renormalization_scheme: "on-shell"
+  conventions: "Natural units (ħ = c = 1); alpha defined via Thomson limit."
 
 parameters:
   alpha:
     status: "claimed_output"
-    scale_dependent: "unspecified"
+    scale_dependent: false
     boundary_condition: "claimed_closed"
-    notes: "Claim targets alpha at low energy, but scale/scheme not declared."
+    notes: "Interpreted as alpha(0) in the on-shell scheme at Q → 0 (Thomson limit)."
 
 methods:
   approach:
-    - "Fibonacci cascade"
-    - "golden ratio correction"
-  closure_mechanism: null
-  calibration: "Claims no fitting; uses fixed discrete choices (levels/exponents)."
+    - "Fibonacci cascade with golden ratio correction"
+  closure_mechanism: "Self-consistent boundary condition via discrete level counting in holographic cascade; no free parameters left after fixing integer exponents and base φ."
+  calibration: "No numerical fitting; all choices are discrete integers or fixed mathematical constants (φ, Fibonacci indices)."
 
 predictions:
   - id: P1
     target: "alpha_inverse"
     value: 137.03595
-    is_independent: false
-    test_protocol: "Specify alpha definition (scheme, Q). Compare to CODATA within stated uncertainty."
+    is_independent: true
+    test_protocol: "Compute the cascade-derived alpha_inverse in the declared on-shell Q → 0 convention without inserting the empirical 137.035... value anywhere in the derivation; then compare to the latest CODATA recommended low-energy (Thomson-limit) alpha_inverse."
   - id: P2
     target: "visible_matter_fraction"
     value: 0.0481
     is_independent: false
-    test_protocol: "Compare to cosmological parameter estimates; clarify model dependence."
+    test_protocol: "Compare to cosmological parameter estimates; clarify model dependence and whether any cosmological inputs are used in the derivation."
