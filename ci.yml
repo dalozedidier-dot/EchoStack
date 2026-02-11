@@ -1,0 +1,83 @@
+name: EchoStack CI
+
+on:
+  push:
+    branches: ["main", "master"]
+  pull_request:
+    branches: ["main", "master"]
+  workflow_dispatch:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Upgrade pip
+        run: python -m pip install --upgrade pip
+
+      - name: Install (dev)
+        run: pip install -e ".[dev]"
+
+      - name: Pre-commit (ruff + black)
+        run: pre-commit run --all-files
+
+      - name: CLI smoke
+        run: echostack --help
+
+      - name: Validate examples
+        run: |
+          echostack validate echostack/examples/qhigt_alpha_claim.yml
+          echostack validate echostack/examples/qed_alpha_claim.yml
+
+      - name: Audit examples and assert expected outcomes
+        run: |
+          mkdir -p _ci_out
+          echostack audit echostack/examples/qhigt_alpha_claim.yml --out _ci_out/audit_qhigt.json
+          echostack audit echostack/examples/qed_alpha_claim.yml --out _ci_out/audit_qed.json
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          q = json.loads(Path('_ci_out/audit_qhigt.json').read_text(encoding='utf-8'))
+          d = json.loads(Path('_ci_out/audit_qed.json').read_text(encoding='utf-8'))
+
+          assert q['audit_version'] == '0.2.4'
+          assert d['audit_version'] == '0.2.4'
+
+          # qHIGT example should be fully specified (pass across all levels).
+          assert q['summary']['overall'] == 'pass', q.get('summary')
+          for lvl in ('E1','E2','E3','E4','E5'):
+              assert q['criteria'][lvl]['status'] == 'pass', (lvl, q['criteria'][lvl])
+
+          # QED example should pass across all levels.
+          assert d['summary']['overall'] == 'pass', d.get('summary')
+          for lvl in ('E1','E2','E3','E4','E5'):
+              assert d['criteria'][lvl]['status'] == 'pass', (lvl, d['criteria'][lvl])
+
+          print('OK: expected outcomes')
+          PY
+
+      - name: Pytest
+        run: pytest -q
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: echostack-audit-${{ matrix.python-version }}
+          path: _ci_out/
