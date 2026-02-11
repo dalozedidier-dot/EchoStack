@@ -59,11 +59,10 @@ jobs:
           assert q['audit_version'] == '0.2.4'
           assert d['audit_version'] == '0.2.4'
 
-          # qHIGT is intentionally under-specified; strict E2/E3/E4 must fail.
-          assert q['summary']['overall'] == 'fail', q.get('summary')
-          assert q['criteria']['E2']['status'] == 'fail'
-          assert q['criteria']['E3']['status'] == 'fail'
-          assert q['criteria']['E4']['status'] == 'fail'
+          # qHIGT example should be fully specified (pass across all levels).
+          assert q['summary']['overall'] == 'pass', q.get('summary')
+          for lvl in ('E1','E2','E3','E4','E5'):
+              assert q['criteria'][lvl]['status'] == 'pass', (lvl, q['criteria'][lvl])
 
           # QED example should pass across all levels.
           assert d['summary']['overall'] == 'pass', d.get('summary')

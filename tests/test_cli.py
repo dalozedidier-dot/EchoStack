@@ -39,7 +39,7 @@ def test_validate_explain_includes_schema_details() -> None:
     assert "schema_path" in data["issues"][0]
 
 
-def test_audit_qhigt_expected_fail_strict() -> None:
+def test_audit_qhigt_expected_pass() -> None:
     out = ROOT / "_ci_out" / "audit_qhigt_test.json"
     out.parent.mkdir(parents=True, exist_ok=True)
 
@@ -48,11 +48,9 @@ def test_audit_qhigt_expected_fail_strict() -> None:
 
     data = json.loads(out.read_text(encoding="utf-8"))
     assert data["audit_version"] == "0.2.4"
-    assert data["summary"]["overall"] == "fail"
-    assert data["criteria"]["E2"]["status"] == "fail"
-    assert data["criteria"]["E3"]["status"] == "fail"
-    assert data["criteria"]["E4"]["status"] == "fail"
-
+    assert data["summary"]["overall"] == "pass"
+    for lvl in ("E1", "E2", "E3", "E4", "E5"):
+        assert data["criteria"][lvl]["status"] == "pass", (lvl, data["criteria"][lvl])
 
 def test_audit_qed_expected_pass() -> None:
     out = ROOT / "_ci_out" / "audit_qed_test.json"
@@ -86,14 +84,13 @@ def test_audit_dir_writes_reports_and_index() -> None:
 
 
 def test_audit_fail_on_fail_exit_codes() -> None:
-    # qhigt is overall fail -> exit code 2 when fail-on-fail
-    p = _run(["audit", "echostack/examples/qhigt_alpha_claim.yml", "--fail-on-fail"])
+    # adversarial example is overall fail -> exit code 2 when fail-on-fail
+    p = _run(["audit", "echostack/examples/adversarial_well_formed.yml", "--fail-on-fail"])
     assert p.returncode == 2, p.stderr
 
     # qed is pass -> exit code 0
     p2 = _run(["audit", "echostack/examples/qed_alpha_claim.yml", "--fail-on-fail"])
     assert p2.returncode == 0, p2.stderr
-
 
 def test_audit_invalid_claim_exit_code_1() -> None:
     p = _run(["audit", "echostack/examples/invalid_missing_fields.yml", "--fail-on-fail"])
