@@ -20,6 +20,7 @@ Turn a structured claim manifest into a strict audit report of specification qua
 
 ## CLI
 
+- `echostack init [out.yml]`
 - `echostack validate <claim.yml>`
 - `echostack audit <claim.yml> [--out report.json] [--pretty]`
 - `echostack audit-dir <paths...> --out-dir <dir> [--index] [--fail-on-fail]`

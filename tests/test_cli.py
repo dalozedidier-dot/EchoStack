@@ -124,3 +124,32 @@ def test_audit_dir_fail_on_fail_exit_codes() -> None:
     )
     # examples include at least one overall fail, but also include an invalid manifest -> code 1
     assert p.returncode == 1, p.stderr
+
+
+
+def test_init_creates_schema_valid_claim(tmp_path: Path) -> None:
+    out = tmp_path / "new_claim.yml"
+
+    p = _run(
+        [
+            "init",
+            str(out),
+            "--claim-id",
+            "my_claim_v1",
+            "--source",
+            "zenodo:999999",
+        ]
+    )
+    assert p.returncode == 0, p.stderr
+    assert out.exists()
+
+    # init output must be schema-valid
+    p2 = _run(["validate", str(out)])
+    assert p2.returncode == 0, p2.stderr
+
+    # refuse to overwrite unless --force
+    p3 = _run(["init", str(out)])
+    assert p3.returncode != 0
+
+    p4 = _run(["init", str(out), "--force"])
+    assert p4.returncode == 0, p4.stderr

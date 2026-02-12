@@ -27,6 +27,13 @@ Show version:
 echostack --version
 ```
 
+Create a new claim template (schema-valid, but will fail E2/E3 until you specify scale/scheme):
+
+```bash
+echostack init my_claim.yml --claim-id my_claim_v1 --source zenodo:123456
+```
+
+
 Validate a claim against the schema:
 
 ```bash

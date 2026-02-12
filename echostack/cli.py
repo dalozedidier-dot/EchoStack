@@ -5,6 +5,7 @@ import json
 import re
 import sys
 from pathlib import Path
+from typing import Any
 
 from . import __version__
 from .audit import audit_claim
@@ -76,6 +77,113 @@ def _safe_slug(s: str) -> str:
 
 def _load_claim(path: Path) -> Claim:
     return Claim.from_yaml(path)
+
+
+def _yaml_scalar(value: Any) -> str:
+    """Return a YAML scalar.
+
+    We use JSON-style quoted strings for safety, which are valid YAML.
+    """
+    if value is None:
+        return "null"
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, int | float):
+        return str(value)
+    return json.dumps(str(value), ensure_ascii=False)
+
+
+def _render_init_template(
+    *,
+    claim_id: str,
+    source: str,
+    date: str | None,
+    title: str | None,
+    author: str | None,
+    abstract: str | None,
+    theory: str,
+    regime: str,
+    scale_q: str,
+    scheme: str,
+) -> str:
+    # Must satisfy the JSON Schema. Defaults are schema-valid but intentionally
+    # incomplete for E2/E3 until the author specifies scale and scheme.
+    lines: list[str] = []
+
+    lines.append(f"claim_id: {_yaml_scalar(claim_id)}")
+    lines.append(f"title: {_yaml_scalar(title)}")
+    lines.append(f"abstract: {_yaml_scalar(abstract)}")
+    lines.append(f"author: {_yaml_scalar(author)}")
+    lines.append(f"source: {_yaml_scalar(source)}")
+    lines.append(f"date: {_yaml_scalar(date)}")
+    lines.append("")
+
+    lines.append("assertions:")
+    lines.append("  - id: A1")
+    lines.append(f"    statement: {_yaml_scalar('State the core claim in one sentence.')} ")
+    lines.append("")
+
+    lines.append("domain:")
+    lines.append(f"  theory: {_yaml_scalar(theory)}")
+    lines.append(f"  regime: {_yaml_scalar(regime)}")
+    lines.append(f"  scale_Q: {_yaml_scalar(scale_q)}")
+    lines.append(f"  renormalization_scheme: {_yaml_scalar(scheme)}")
+    lines.append("  conventions: null")
+    lines.append("")
+
+    lines.append("parameters:")
+    lines.append("  alpha:")
+    lines.append("    status: claimed_output")
+    lines.append("    scale_dependent: unspecified")
+    lines.append("    boundary_condition: claimed_closed")
+    lines.append("    notes: null")
+    lines.append("")
+
+    lines.append("methods:")
+    lines.append("  approach: [geometric_construction]")
+    lines.append("  closure_mechanism: null")
+    lines.append("  calibration: null")
+    lines.append("")
+
+    lines.append("predictions:")
+    lines.append("  - id: P1")
+    lines.append(f"    target: {_yaml_scalar('alpha_inverse')}")
+    lines.append("    value: 137.035999")
+    lines.append("    is_independent: false")
+    lines.append(
+        f"    test_protocol: {_yaml_scalar('Describe an independent measurement protocol and expected comparison.') }"
+    )
+    lines.append("")
+
+    return "\n".join(lines)
+
+
+def cmd_init(args: argparse.Namespace) -> int:
+    out_path = Path(args.out)
+
+    if out_path.exists() and not args.force:
+        sys.stderr.write(
+            f"ERROR: Refusing to overwrite existing file: {out_path} (use --force)\n"
+        )
+        return EXIT_INVALID
+
+    content = _render_init_template(
+        claim_id=args.claim_id,
+        source=args.source,
+        date=args.date,
+        title=args.title,
+        author=args.author,
+        abstract=args.abstract,
+        theory=args.theory,
+        regime=args.regime,
+        scale_q=args.scale_q,
+        scheme=args.scheme,
+    )
+
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(content, encoding="utf-8")
+    sys.stdout.write(str(out_path) + "\n")
+    return EXIT_OK
 
 
 def cmd_validate(args: argparse.Namespace) -> int:
@@ -255,7 +363,38 @@ def build_parser() -> argparse.ArgumentParser:
         version=f"echostack {__version__}",
         help="Print version and exit",
     )
+
     sub = parser.add_subparsers(dest="cmd", required=True)
+
+    p_init = sub.add_parser("init", help="Create a schema-valid claim manifest template")
+    p_init.add_argument(
+        "out",
+        nargs="?",
+        default="claim.yml",
+        help="Output path for the new claim YAML (default: claim.yml)",
+    )
+    p_init.add_argument("--force", action="store_true", help="Overwrite existing file")
+    p_init.add_argument("--claim-id", default="example_claim", help="Claim identifier")
+    p_init.add_argument("--source", default="zenodo:000000", help="Source reference")
+    p_init.add_argument("--date", default=None, help="ISO date YYYY-MM-DD (optional)")
+    p_init.add_argument("--title", default=None, help="Optional title")
+    p_init.add_argument("--abstract", default=None, help="Optional abstract")
+    p_init.add_argument("--author", default=None, help="Optional author")
+    p_init.add_argument("--theory", default="QED / beyond-SM", help="Domain theory")
+    p_init.add_argument("--regime", default="IR / low-energy", help="Domain regime")
+    p_init.add_argument(
+        "--scale-q",
+        dest="scale_q",
+        default="unspecified",
+        help="Energy scale Q (use 'unspecified' if unknown)",
+    )
+    p_init.add_argument(
+        "--scheme",
+        dest="scheme",
+        default="unspecified",
+        help="Renormalization scheme (use 'unspecified' if unknown)",
+    )
+    p_init.set_defaults(func=cmd_init)
 
     p_val = sub.add_parser("validate", help="Validate a claim manifest against the schema")
     p_val.add_argument("claim", help="Path to claim YAML")
