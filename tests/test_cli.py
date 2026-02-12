@@ -5,6 +5,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import echostack
+
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -54,7 +56,7 @@ def test_audit_qhigt_expected_pass() -> None:
     assert p.returncode == 0, p.stderr
 
     data = json.loads(out.read_text(encoding="utf-8"))
-    assert data["audit_version"] == "0.2.4"
+    assert data["audit_version"] == echostack.__version__
     assert data["summary"]["overall"] == "pass"
     for lvl in ("E1", "E2", "E3", "E4", "E5"):
         assert data["criteria"][lvl]["status"] == "pass", (lvl, data["criteria"][lvl])
@@ -68,7 +70,7 @@ def test_audit_qed_expected_pass() -> None:
     assert p.returncode == 0, p.stderr
 
     data = json.loads(out.read_text(encoding="utf-8"))
-    assert data["audit_version"] == "0.2.4"
+    assert data["audit_version"] == echostack.__version__
     assert data["summary"]["overall"] == "pass"
     for lvl in ("E1", "E2", "E3", "E4", "E5"):
         assert data["criteria"][lvl]["status"] == "pass", (lvl, data["criteria"][lvl])

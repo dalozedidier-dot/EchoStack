@@ -21,6 +21,12 @@ pip install -e ".[dev]"
 
 ## Quickstart
 
+Show version:
+
+```bash
+echostack --version
+```
+
 Validate a claim against the schema:
 
 ```bash
@@ -32,6 +38,9 @@ Audit a claim (E1..E5) into a JSON report:
 ```bash
 echostack audit echostack/examples/qhigt_alpha_claim.yml --out audit_report.json
 ```
+
+Note: reports include an `input` block with the source file `path` and `sha256` (content hash)
+to make audits reproducible and verifiable.
 
 Audit a whole directory (writes multiple JSON reports + optional index):
 

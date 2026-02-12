@@ -56,8 +56,10 @@ jobs:
           q = json.loads(Path('_ci_out/audit_qhigt.json').read_text(encoding='utf-8'))
           d = json.loads(Path('_ci_out/audit_qed.json').read_text(encoding='utf-8'))
 
-          assert q['audit_version'] == '0.2.4'
-          assert d['audit_version'] == '0.2.4'
+          import echostack
+
+          assert q['audit_version'] == echostack.__version__
+          assert d['audit_version'] == echostack.__version__
 
           # qHIGT example should be fully specified (pass across all levels).
           assert q['summary']['overall'] == 'pass', q.get('summary')

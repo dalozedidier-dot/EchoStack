@@ -4,6 +4,7 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
+from . import __version__
 from .claim import Claim
 
 
@@ -235,7 +236,11 @@ def audit_claim(claim: Claim) -> dict[str, Any]:
     ]
 
     report: dict[str, Any] = {
-        "audit_version": "0.2.4",
+        "audit_version": __version__,
+        "input": {
+            "path": str(claim.path) if claim.path else None,
+            "sha256": claim.source_sha256,
+        },
         "claim_id": claim.claim_id,
         "validation": {
             "status": "pass" if validation_ok else "fail",

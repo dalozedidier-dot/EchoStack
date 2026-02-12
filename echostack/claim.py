@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -13,6 +14,7 @@ class Claim:
 
     data: dict[str, Any]
     path: Path | None = None
+    source_sha256: str | None = None
 
     @property
     def claim_id(self) -> str:
@@ -29,7 +31,8 @@ class Claim:
     @staticmethod
     def from_yaml(path: Path) -> Claim:
         data = load_yaml(path)
-        return Claim(data=data, path=path)
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        return Claim(data=data, path=path, source_sha256=digest)
 
     def validate(self) -> list[ValidationIssue]:
         return validate_claim(self.data)

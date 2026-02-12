@@ -6,6 +6,7 @@ import re
 import sys
 from pathlib import Path
 
+from . import __version__
 from .audit import audit_claim
 from .claim import Claim
 
@@ -247,6 +248,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="echostack",
         description="EchoStack: claim manifest -> E-Strict audit report (spec quality, not truth)",
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"echostack {__version__}",
+        help="Print version and exit",
     )
     sub = parser.add_subparsers(dest="cmd", required=True)
 

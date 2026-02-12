@@ -2,10 +2,18 @@
 
 EchoStack ingests a **claim manifest** (YAML) that is intentionally declarative.
 
-## Minimal required keys
+## Required keys (current schema)
+
+The embedded validator (`echostack/schemas/claim_schema.json`) is intentionally strict.
+At the moment it requires the following top-level keys:
 
 - `claim_id` (string)
 - `source` (string)
+- `assertions` (array)
+- `domain` (object)
+- `parameters` (object)
+- `methods` (object)
+- `predictions` (array)
 
 ## Recommended structure
 
