@@ -126,7 +126,6 @@ def test_audit_dir_fail_on_fail_exit_codes() -> None:
     assert p.returncode == 1, p.stderr
 
 
-
 def test_init_creates_schema_valid_claim(tmp_path: Path) -> None:
     out = tmp_path / "new_claim.yml"
 

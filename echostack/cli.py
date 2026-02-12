@@ -162,9 +162,7 @@ def cmd_init(args: argparse.Namespace) -> int:
     out_path = Path(args.out)
 
     if out_path.exists() and not args.force:
-        sys.stderr.write(
-            f"ERROR: Refusing to overwrite existing file: {out_path} (use --force)\n"
-        )
+        sys.stderr.write(f"ERROR: Refusing to overwrite existing file: {out_path} (use --force)\n")
         return EXIT_INVALID
 
     content = _render_init_template(
