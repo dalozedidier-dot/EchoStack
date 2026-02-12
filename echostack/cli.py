@@ -151,7 +151,7 @@ def _render_init_template(
     lines.append("    value: 137.035999")
     lines.append("    is_independent: false")
     lines.append(
-        f"    test_protocol: {_yaml_scalar('Describe an independent measurement protocol and expected comparison.') }"
+        f"    test_protocol: {_yaml_scalar('Describe an independent measurement protocol and expected comparison.')}"
     )
     lines.append("")
 
@@ -301,6 +301,7 @@ def cmd_audit_dir(args: argparse.Namespace) -> int:
                     "path": str(p),
                     "report": None,
                     "overall": "error",
+                    "validation": "fail",
                     "error": str(e),
                 }
             )
@@ -322,18 +323,40 @@ def cmd_audit_dir(args: argparse.Namespace) -> int:
         if overall != "pass":
             any_not_pass = True
 
+        # Keep index portable: report path is relative to out_dir, never absolute.
+        report_rel = out_path.name
+        input_block = report.get("input", {}) if isinstance(report.get("input", {}), dict) else {}
+        criteria_block = (
+            report.get("criteria", {}) if isinstance(report.get("criteria", {}), dict) else {}
+        )
+
         index.append(
             {
                 "claim_id": report.get("claim_id"),
                 "path": str(p),
-                "report": str(out_path),
+                "report": report_rel,
+                "audit_version": report.get("audit_version"),
+                "input_sha256": input_block.get("sha256"),
                 "overall": overall,
                 "validation": validation_status,
+                "criteria": {
+                    k: v.get("status") for k, v in criteria_block.items() if isinstance(v, dict)
+                },
             }
         )
 
+    # Stable ordering for diff-friendly CI artifacts.
+    index_sorted = sorted(
+        index,
+        key=lambda r: (r.get("claim_id") is None, str(r.get("claim_id") or "")),
+    )
+
     if args.index:
-        _write_json({"reports": index}, out=out_dir / "index.json", pretty=True)
+        _write_json(
+            {"audit_version": __version__, "reports": index_sorted},
+            out=out_dir / "index.json",
+            pretty=True,
+        )
 
     if args.fail_on_not_pass:
         if any_invalid:
