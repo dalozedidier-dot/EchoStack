@@ -53,10 +53,10 @@ jobs:
           import json
           from pathlib import Path
 
+          import echostack
+
           q = json.loads(Path('_ci_out/audit_qhigt.json').read_text(encoding='utf-8'))
           d = json.loads(Path('_ci_out/audit_qed.json').read_text(encoding='utf-8'))
-
-          import echostack
 
           assert q['audit_version'] == echostack.__version__
           assert d['audit_version'] == echostack.__version__
@@ -73,6 +73,25 @@ jobs:
 
           print('OK: expected outcomes')
           PY
+
+      - name: Build audit-dir artifacts (including non-zero exit mode cases)
+        run: |
+          mkdir -p _ci_out
+
+          # Baseline: audit everything and produce a portable index
+          echostack audit-dir echostack/examples --out-dir _ci_out/audit_dir --index
+
+          # Non-zero exit code modes are expected; we still want their artifacts.
+          set +e
+          echostack audit-dir echostack/examples --out-dir _ci_out/audit_dir_fail_on_fail --index --fail-on-fail
+          echostack audit-dir echostack/examples --out-dir _ci_out/audit_dir_fail_fast_first_fail --index --fail-fast
+          echostack audit-dir \
+            echostack/examples/invalid_missing_fields.yml \
+            echostack/examples/qed_alpha_claim.yml \
+            --out-dir _ci_out/audit_dir_fail_fast_invalid \
+            --index \
+            --fail-fast
+          set -e
 
       - name: Pytest
         run: pytest -q

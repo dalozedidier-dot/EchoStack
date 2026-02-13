@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import subprocess
 import sys
@@ -8,6 +9,12 @@ from pathlib import Path
 import echostack
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def _sha256_file(path: Path) -> str:
+    h = hashlib.sha256()
+    h.update(path.read_bytes())
+    return h.hexdigest()
 
 
 def _run(args: list[str]) -> subprocess.CompletedProcess[str]:
@@ -65,6 +72,10 @@ def test_audit_qhigt_expected_pass() -> None:
 
     data = json.loads(out.read_text(encoding="utf-8"))
     assert data["audit_version"] == echostack.__version__
+    assert data["input"]["path"] == "echostack/examples/qhigt_alpha_claim.yml"
+    assert data["input"]["sha256"] == _sha256_file(
+        ROOT / "echostack/examples/qhigt_alpha_claim.yml"
+    )
     assert data["summary"]["overall"] == "pass"
     for lvl in ("E1", "E2", "E3", "E4", "E5"):
         assert data["criteria"][lvl]["status"] == "pass", (lvl, data["criteria"][lvl])
@@ -99,6 +110,9 @@ def test_audit_dir_writes_reports_and_index() -> None:
     assert "reports" in index
     assert any(r["claim_id"] == "qed_alpha_on_shell_ref_v1" for r in index["reports"])
     assert any(r["claim_id"] == "qhigt_alpha_v3_1" for r in index["reports"])
+
+    qed = next(r for r in index["reports"] if r["claim_id"] == "qed_alpha_on_shell_ref_v1")
+    assert qed["input_sha256"] == _sha256_file(ROOT / "echostack/examples/qed_alpha_claim.yml")
 
 
 def test_audit_fail_on_fail_exit_codes() -> None:

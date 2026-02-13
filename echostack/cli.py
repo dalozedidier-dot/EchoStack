@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import sys
@@ -27,6 +28,17 @@ def _write_json(obj: object, out: Path | None, pretty: bool) -> None:
         return
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(payload + "\n", encoding="utf-8")
+
+
+def _try_sha256_file(path: Path) -> str | None:
+    try:
+        h = hashlib.sha256()
+        with path.open("rb") as f:
+            for chunk in iter(lambda: f.read(1024 * 1024), b""):
+                h.update(chunk)
+        return h.hexdigest()
+    except OSError:
+        return None
 
 
 def _is_glob(s: str) -> bool:
@@ -249,6 +261,8 @@ def _audit_and_write(
         return None
 
     report = audit_claim(claim)
+    sha256 = _try_sha256_file(claim_path)
+    report["input"] = {"path": str(claim_path), "sha256": sha256}
     _write_json(report, out=out_path, pretty=pretty)
     return report
 
@@ -297,6 +311,8 @@ def cmd_audit_dir(args: argparse.Namespace) -> int:
     for pth in claim_paths:
         processed += 1
 
+        input_sha256 = _try_sha256_file(pth)
+
         try:
             claim = _load_claim(pth)
         except Exception as e:
@@ -306,6 +322,7 @@ def cmd_audit_dir(args: argparse.Namespace) -> int:
                     "claim_id": None,
                     "path": str(pth),
                     "report": None,
+                    "input_sha256": input_sha256,
                     "overall": "error",
                     "validation": "fail",
                     "error": str(e),
@@ -317,6 +334,7 @@ def cmd_audit_dir(args: argparse.Namespace) -> int:
             continue
 
         report = audit_claim(claim)
+        report["input"] = {"path": str(pth), "sha256": input_sha256}
         slug = _safe_slug(str(report.get("claim_id", pth.stem)))
         out_path = out_dir / f"audit_{slug}.json"
         _write_json(report, out=out_path, pretty=args.pretty)
