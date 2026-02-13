@@ -401,7 +401,6 @@ def cmd_audit_dir(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
-
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="echostack",

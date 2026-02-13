@@ -4,8 +4,9 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-from . import __version__
 from .claim import Claim
+
+from . import __version__ as _ECHOSTACK_VERSION
 
 
 @dataclass(frozen=True)
@@ -236,11 +237,7 @@ def audit_claim(claim: Claim) -> dict[str, Any]:
     ]
 
     report: dict[str, Any] = {
-        "audit_version": __version__,
-        "input": {
-            "path": str(claim.path) if claim.path else None,
-            "sha256": claim.source_sha256,
-        },
+        "audit_version": _ECHOSTACK_VERSION,
         "claim_id": claim.claim_id,
         "validation": {
             "status": "pass" if validation_ok else "fail",
