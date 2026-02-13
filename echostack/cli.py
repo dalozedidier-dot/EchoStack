@@ -285,30 +285,39 @@ def cmd_audit_dir(args: argparse.Namespace) -> int:
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
+    total_inputs = len(claim_paths)
+    processed = 0
+    stopped_early = False
+
     index: list[dict[str, object]] = []
     any_invalid = False
     any_fail = False
     any_not_pass = False
 
-    for p in claim_paths:
+    for pth in claim_paths:
+        processed += 1
+
         try:
-            claim = _load_claim(p)
+            claim = _load_claim(pth)
         except Exception as e:
             any_invalid = True
             index.append(
                 {
                     "claim_id": None,
-                    "path": str(p),
+                    "path": str(pth),
                     "report": None,
                     "overall": "error",
                     "validation": "fail",
                     "error": str(e),
                 }
             )
+            if args.fail_fast:
+                stopped_early = True
+                break
             continue
 
         report = audit_claim(claim)
-        slug = _safe_slug(str(report.get("claim_id", p.stem)))
+        slug = _safe_slug(str(report.get("claim_id", pth.stem)))
         out_path = out_dir / f"audit_{slug}.json"
         _write_json(report, out=out_path, pretty=args.pretty)
 
@@ -333,7 +342,7 @@ def cmd_audit_dir(args: argparse.Namespace) -> int:
         index.append(
             {
                 "claim_id": report.get("claim_id"),
-                "path": str(p),
+                "path": str(pth),
                 "report": report_rel,
                 "audit_version": report.get("audit_version"),
                 "input_sha256": input_block.get("sha256"),
@@ -345,6 +354,10 @@ def cmd_audit_dir(args: argparse.Namespace) -> int:
             }
         )
 
+        if args.fail_fast and (validation_status != "pass" or overall == "fail"):
+            stopped_early = True
+            break
+
     # Stable ordering for diff-friendly CI artifacts.
     index_sorted = sorted(
         index,
@@ -353,11 +366,26 @@ def cmd_audit_dir(args: argparse.Namespace) -> int:
 
     if args.index:
         _write_json(
-            {"audit_version": __version__, "reports": index_sorted},
+            {
+                "audit_version": __version__,
+                "total_inputs": total_inputs,
+                "processed": processed,
+                "stopped_early": stopped_early,
+                "reports": index_sorted,
+            },
             out=out_dir / "index.json",
             pretty=True,
         )
 
+    # --fail-fast: stop at first invalid or overall=fail and return non-zero.
+    if args.fail_fast:
+        if any_invalid:
+            return EXIT_INVALID
+        if any_fail:
+            return EXIT_AUDIT_FAIL
+        return EXIT_OK
+
+    # --fail-on-*: audit everything and only then enforce exit codes.
     if args.fail_on_not_pass:
         if any_invalid:
             return EXIT_INVALID
@@ -371,6 +399,7 @@ def cmd_audit_dir(args: argparse.Namespace) -> int:
             return EXIT_AUDIT_FAIL
 
     return EXIT_OK
+
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -467,6 +496,12 @@ def build_parser() -> argparse.ArgumentParser:
         dest="fail_on_not_pass",
         action="store_true",
         help="Exit with code 2 if any report has overall!=pass (code 1 if schema/load fails)",
+    )
+    p_dir.add_argument(
+        "--fail-fast",
+        dest="fail_fast",
+        action="store_true",
+        help="Stop at the first invalid input or overall=fail (exit code 1 for invalid, 2 for fail)",
     )
     p_dir.set_defaults(func=cmd_audit_dir)
 
