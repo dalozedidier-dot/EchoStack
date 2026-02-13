@@ -4,9 +4,8 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
-from .claim import Claim
-
 from . import __version__ as _ECHOSTACK_VERSION
+from .claim import Claim
 
 
 @dataclass(frozen=True)
